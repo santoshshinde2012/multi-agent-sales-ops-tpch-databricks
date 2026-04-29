@@ -266,19 +266,64 @@ permissions, and every conversation feeds back into Agent Monitoring.
 
 ---
 
+## Why does Genie sometimes give different answers to the same question?
+
+This is a real and common production behavior, not a bug in your code. It's
+worth understanding before you debug.
+
+**The root cause:** Genie's NL→SQL step is performed by a foundation model.
+Identical prompts can produce slightly different SQL on different calls —
+different join order, slightly different filter, a different `LIMIT`, or just
+different prose around the same numbers. This is amplified when the question
+is ambiguous or the Genie space lacks curated examples for the question
+pattern.
+
+**This repo addresses the issue with three layered defenses:**
+
+1. **Response caching** *(code-level)*. The `GenieSpecialist` accepts a
+   `ResponseCache`. When configured (it is by default in production), the
+   *exact same question* asked within `GENIE_CACHE_TTL_SECONDS` returns the
+   *same cached answer*. Asking 3 times in a row gives 3 identical responses
+   instead of 3 slightly different ones. Default TTL: 5 minutes.
+   See [`response_cache.py`](src/sales_ops_agent/specialists/response_cache.py).
+
+2. **Curated Genie space** *(setup-level)*. The synonyms and example
+   queries in [`resources/genie_space_config.yaml`](resources/genie_space_config.yaml)
+   pin Genie to specific SQL patterns for common questions. Genie's accuracy
+   improves dramatically once a few canonical examples are in place — this
+   is the article's [Step 2](docs/article.md) recommendation.
+
+3. **Stateless invocation** *(architectural-level)*. Each call to Genie
+   passes only the current user message — never prior conversation history.
+   This prevents earlier questions from silently biasing later answers.
+
+**Tuning the cache:** set `GENIE_CACHE_TTL_SECONDS` in `.env`. Set to `0` to
+disable caching entirely (useful in environments where data changes minute
+by minute). Set higher (say 1800) if your underlying tables update on a slow
+cadence.
+
+**Swapping the cache backend:** `ResponseCache` is a Protocol. The default
+`InMemoryResponseCache` is process-local; for multi-replica deployments,
+implement a Redis or Lakebase-backed cache that satisfies the same protocol
+and inject it into `GenieSpecialist`. The specialist code does not change.
+
+---
+
 ## Testing
 
 ```bash
 pytest tests/
 ```
 
-The suite has **30 tests** spanning:
+The suite has **42 tests** spanning:
 
 - The **router**, **synthesizer**, and **supervisor wiring**.
 - Every concrete **specialist** (Genie, Knowledge, Compute, Action) using fakes
   for the `SqlExecutor` / `GenieInvoker` / `TicketCreator` protocols.
 - The **DatabricksSqlExecutor** itself, with fakes shaped exactly like the real
   Databricks SDK response objects.
+- The **Genie response cache** — including the canonical "same question 3 times
+  returns the same answer" guarantee.
 
 There are no real Databricks calls in the test suite, so it runs in seconds
 without a workspace. To verify your real workspace end-to-end, run the

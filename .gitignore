@@ -1,24 +1,122 @@
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+
+# Distribution / packaging
 build/
+develop-eggs/
 dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
 *.egg-info/
 *.egg
+MANIFEST
 
+# Virtual environments
 .venv/
 venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Testing / linting caches
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+.cache
+nosetests.xml
 
+# Type checkers
+.pyre/
+.pytype/
+.dmypy.json
+dmypy.json
+
+# Environment / secrets
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+secrets/
+credentials.json
 
+# Databricks
 .databricks/
 .databricks-bundle.lock
+.databrickscfg
+
+# MLflow
 mlruns/
 mlartifacts/
+mlflow.db
+mlflow.db-journal
+*.mlflow
+
+# Jupyter / IPython
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+profile_default/
+ipython_config.py
+
+# Logs / databases
+*.log
+logs/
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# IDE / editors
+.idea/
+.vscode/
+!.vscode/settings.json.example
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.spyderproject
+.spyproject
+.ropeproject
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Local data / artifacts
+*.tmp
+*.temp
+*.bak
+*.backup
+.local/
+tmp/
+temp/
+
+# Project-specific
+eval_data/*.csv
+eval_data/*.json
+!eval_data/.gitkeep

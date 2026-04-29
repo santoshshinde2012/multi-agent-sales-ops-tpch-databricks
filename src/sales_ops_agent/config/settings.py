@@ -49,6 +49,13 @@ class Settings(BaseSettings):
     # ─── Observability ─────────────────────────────────────────────────────
     MLFLOW_EXPERIMENT: str = Field(default="/Shared/sales_ops_agent")
 
+    # ─── Genie response cache ──────────────────────────────────────────────
+    # How long (in seconds) to return a cached Genie answer for the same
+    # question. 0 disables the cache entirely. The default of 5 minutes
+    # absorbs "user asks the same thing 3 times in a row" bursts while
+    # keeping data reasonably fresh for slower-changing tables.
+    GENIE_CACHE_TTL_SECONDS: float = Field(default=300.0)
+
     # ─── Derived ───────────────────────────────────────────────────────────
     @property
     def working_schema_fqn(self) -> str:

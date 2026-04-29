@@ -7,7 +7,10 @@ turn the response into a ``SpecialistResult``. It does not route, classify, or
 synthesize.
 
 Dependency Inversion: the underlying invoker is injected as a callable, so
-tests substitute a fake without needing a real Genie space.
+tests substitute a fake without needing a real Genie space. An optional
+``ResponseCache`` is also injected — production wires in an ``InMemoryResponseCache``
+(or a Redis/Lakebase one) so that asking the same question 3 times in a row
+returns the same answer instead of three slightly different ones.
 """
 
 from __future__ import annotations
@@ -18,6 +21,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from .base import Citation, SpecialistResult, SupervisorState
+from .response_cache import ResponseCache, normalize_question
 
 if TYPE_CHECKING:
     from databricks.sdk import WorkspaceClient
@@ -30,18 +34,35 @@ GenieInvoker = Callable[[str], dict[str, Any]]
 
 
 class GenieSpecialist:
-    """Routes structured-data questions to a Genie space."""
+    """Routes structured-data questions to a Genie space.
+
+    Parameters
+    ----------
+    invoker : callable
+        Calls Genie and returns the raw response dict.
+    cache : ResponseCache, optional
+        If provided, identical questions within the cache TTL return the
+        cached answer instead of re-calling Genie. This keeps user-facing
+        responses **consistent across repeated calls** — the canonical fix
+        for "I asked the same thing 3 times and got 3 different answers".
+    """
 
     name = "genie"
 
-    def __init__(self, invoker: GenieInvoker) -> None:
+    def __init__(
+        self,
+        invoker: GenieInvoker,
+        cache: ResponseCache | None = None,
+    ) -> None:
         self._invoke = invoker
+        self._cache = cache
 
     @classmethod
     def from_workspace(
         cls,
         workspace_client: WorkspaceClient,
         genie_space_id: str,
+        cache: ResponseCache | None = None,
     ) -> GenieSpecialist:
         """Construct a GenieSpecialist that calls a real Genie space.
 
@@ -58,12 +79,24 @@ class GenieSpecialist:
         def invoke(message: str) -> dict[str, Any]:
             # GenieAgent.invoke takes a LangChain-style messages list and
             # returns a dict that includes 'messages' and (with include_context)
-            # 'context'. We pass through the structure unchanged.
+            # 'context'. Each call is **stateless** — we deliberately do not
+            # carry conversation history between invocations, because that
+            # would let prior questions silently bias the answer to the next.
             return agent.invoke({"messages": [{"role": "user", "content": message}]})
 
-        return cls(invoker=invoke)
+        return cls(invoker=invoke, cache=cache)
 
     def handle(self, state: SupervisorState) -> SpecialistResult:
+        cache_key = normalize_question(state.user_message)
+
+        # Step 1 — cache hit? Return immediately. Same question, same answer.
+        if self._cache is not None:
+            cached = self._cache.get(cache_key)
+            if cached is not None:
+                logger.info("Genie cache hit for: %s", cache_key[:80])
+                return _result_from_response(cached)
+
+        # Step 2 — cache miss: actually call Genie.
         try:
             response = self._invoke(state.user_message)
         except Exception as exc:
@@ -73,24 +106,33 @@ class GenieSpecialist:
                 content=f"Could not retrieve structured data: {exc}",
             )
 
-        text = _extract_answer_text(response)
-        rows = _extract_rows(response)
-        sql_summary = _extract_sql_summary(response)
+        # Step 3 — store the response so the next 2 (or 200) repeats are cheap
+        # AND consistent.
+        if self._cache is not None:
+            self._cache.set(cache_key, response)
 
-        return SpecialistResult(
-            specialist=self.name,
-            content=text or "Genie returned no answer.",
-            citations=[
-                Citation(
-                    source="samples.tpch (via Genie)",
-                    detail=sql_summary or "generated SQL",
-                )
-            ],
-            data={"rows": rows},
-        )
+        return _result_from_response(response)
 
 
-# ─── Response parsing helpers (kept module-private and pure) ──────────────────
+# ─── Pure response-to-result mapping (kept module-level for testability) ──────
+def _result_from_response(response: dict[str, Any]) -> SpecialistResult:
+    text = _extract_answer_text(response)
+    rows = _extract_rows(response)
+    sql_summary = _extract_sql_summary(response)
+
+    return SpecialistResult(
+        specialist=GenieSpecialist.name,
+        content=text or "Genie returned no answer.",
+        citations=[
+            Citation(
+                source="samples.tpch (via Genie)",
+                detail=sql_summary or "generated SQL",
+            )
+        ],
+        data={"rows": rows},
+    )
+
+
 def _extract_answer_text(response: dict[str, Any]) -> str:
     """Pull the assistant text out of a GenieAgent response."""
     messages = response.get("messages") or []
@@ -112,12 +154,10 @@ def _extract_rows(response: dict[str, Any]) -> list[dict[str, Any]]:
     GenieAgent surfaces rows in a few different shapes depending on version.
     We look in three places, returning the first non-empty list we find.
     """
-    # 1. Direct 'rows' key (newer GenieAgent versions).
     rows = response.get("rows")
     if isinstance(rows, list) and rows:
         return [r for r in rows if isinstance(r, dict)]
 
-    # 2. Nested under context.query_result.
     ctx = response.get("context") or {}
     qr = ctx.get("query_result") or {}
     rows = qr.get("rows") or qr.get("data")
@@ -132,7 +172,6 @@ def _extract_sql_summary(response: dict[str, Any]) -> str:
     ctx = response.get("context") or {}
     sql = ctx.get("sql") or ctx.get("query")
     if isinstance(sql, str) and sql.strip():
-        # Compact whitespace; keep first 120 chars.
         compact = re.sub(r"\s+", " ", sql).strip()
         return compact[:120]
     return ""

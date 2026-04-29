@@ -24,7 +24,9 @@ from .specialists import (
     ComputeFunctionSpecialist,
     DatabricksSqlExecutor,
     GenieSpecialist,
+    InMemoryResponseCache,
     KnowledgeSpecialist,
+    ResponseCache,
     SupervisorState,
 )
 from .supervisor import IntentRouter, build_default_supervisor
@@ -70,9 +72,18 @@ def build_production_agent() -> SalesOpsAgent:
         warehouse_id=settings.WAREHOUSE_ID,
     )
 
+    # Genie cache: keeps "same question 3 times in a row" returning the same
+    # answer. ttl=0 disables it for environments that prefer always-fresh.
+    genie_cache: ResponseCache | None = (
+        InMemoryResponseCache(ttl_seconds=settings.GENIE_CACHE_TTL_SECONDS)
+        if settings.GENIE_CACHE_TTL_SECONDS > 0
+        else None
+    )
+
     genie = GenieSpecialist.from_workspace(
         workspace_client=ws,
         genie_space_id=settings.GENIE_SPACE_ID,
+        cache=genie_cache,
     )
     knowledge = KnowledgeSpecialist(
         sql_executor=sql_executor,
