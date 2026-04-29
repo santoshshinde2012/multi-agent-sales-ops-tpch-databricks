@@ -1,0 +1,95 @@
+# Databricks Asset Bundle
+#
+# This file is the manifest for **Step 8** in the article. It declares the app,
+# the resources it needs, and the on-behalf-of-user auth scopes — which is what
+# guarantees each user only sees the data they are entitled to.
+#
+# Deploy with:  databricks bundle deploy --target prod
+
+bundle:
+  name: sales-ops-agent
+
+variables:
+  catalog:
+    description: Working catalog
+    default: main
+  schema:
+    description: Working schema
+    default: sales_ops
+  warehouse_id:
+    description: SQL Warehouse ID for the data-foundation job
+  llm_endpoint:
+    description: Foundation model endpoint
+    default: databricks-claude-sonnet-4-5
+  vs_endpoint:
+    description: Vector Search endpoint name
+    default: customer_ops_endpoint
+  genie_space_id:
+    description: Genie space ID for sales_ops
+    default: 01ef0000-0000-0000-0000-000000000000
+
+targets:
+  dev:
+    mode: development
+    workspace:
+      host: ${DATABRICKS_HOST}
+    default: true
+  prod:
+    mode: production
+    workspace:
+      host: ${DATABRICKS_HOST}
+
+resources:
+  jobs:
+    setup_data_foundation:
+      name: "[sales_ops] setup data foundation"
+      tasks:
+        - task_key: run_setup
+          notebook_task:
+            notebook_path: ./notebooks/01_setup_data_foundation
+            base_parameters:
+              working_catalog: ${var.catalog}
+              working_schema: ${var.schema}
+          existing_cluster_id: ""    # set this OR use job_cluster_key below
+          # Alternatively spin up a serverless job cluster:
+          # job_cluster_key: setup_cluster
+      # job_clusters:
+      #   - job_cluster_key: setup_cluster
+      #     new_cluster:
+      #       spark_version: 15.4.x-scala2.12
+      #       node_type_id: i3.xlarge
+      #       num_workers: 0
+
+  apps:
+    sales_ops_agent:
+      name: sales-ops-agent
+      source_code_path: ./
+      description: Sales Ops Intelligence multi-agent assistant
+      # ──────────────────────────────────────────────────────────────
+      # On-Behalf-Of-User authorization — the agent calls Genie,
+      # Vector Search, and external systems AS the requesting user.
+      # ──────────────────────────────────────────────────────────────
+      user_api_scopes:
+        - sql
+        - dashboards.genie
+        - serving.serving-endpoints
+        - vectorsearch.vector-search-endpoints
+        - vectorsearch.vector-search-indexes
+
+      resources:
+        - name: sales_ops_genie
+          genie_space:
+            space_id: ${var.genie_space_id}
+            permission: CAN_RUN
+        - name: llm
+          serving_endpoint:
+            name: ${var.llm_endpoint}
+            permission: CAN_QUERY
+        - name: vector_search_endpoint
+          serving_endpoint:
+            name: ${var.vs_endpoint}
+            permission: CAN_QUERY
+        - name: comment_index_vs
+          vector_search_index:
+            index_name: ${var.catalog}.${var.schema}.comment_index_vs
+            permission: CAN_USE

@@ -1,0 +1,77 @@
+# Genie Space Configuration — sales_ops
+#
+# Paste the synonyms and example questions below into your Genie space when you
+# create it in the Databricks UI. The article (Step 2) explains why curating
+# these matters more than picking a fancier model.
+
+space_name: sales_ops
+
+tables:
+  - main.sales_ops.orders
+  - main.sales_ops.customer
+  - main.sales_ops.lineitem
+  - main.sales_ops.supplier
+  - main.sales_ops.part
+  - main.sales_ops.nation
+  - main.sales_ops.region
+
+synonyms:
+  - term: URGENT orders
+    expression: o_orderpriority = '1-URGENT'
+  - term: high-priority orders
+    expression: o_orderpriority IN ('1-URGENT','2-HIGH')
+  - term: open orders
+    expression: o_orderstatus = 'O'
+  - term: fulfilled orders
+    expression: o_orderstatus = 'F'
+  - term: this week
+    expression: o_orderdate >= current_date() - INTERVAL 7 DAYS
+  - term: last 30 days
+    expression: o_orderdate >= current_date() - INTERVAL 30 DAYS
+
+example_queries:
+  - question: How many URGENT open orders were placed this week?
+    sql: |
+      SELECT COUNT(*) AS n_urgent_open
+      FROM main.sales_ops.orders
+      WHERE o_orderpriority = '1-URGENT'
+        AND o_orderstatus  = 'O'
+        AND o_orderdate   >= current_date() - INTERVAL 7 DAYS;
+
+  - question: Top 10 open URGENT orders by total price this week
+    sql: |
+      SELECT o.o_orderkey, c.c_name, o.o_totalprice, o.o_orderdate, o.o_clerk
+      FROM main.sales_ops.orders   o
+      JOIN main.sales_ops.customer c ON o.o_custkey = c.c_custkey
+      WHERE o.o_orderpriority = '1-URGENT'
+        AND o.o_orderstatus  = 'O'
+        AND o.o_orderdate   >= current_date() - INTERVAL 7 DAYS
+      ORDER BY o.o_totalprice DESC
+      LIMIT 10;
+
+  - question: Which customer market segments have the most open orders this month?
+    sql: |
+      SELECT c.c_mktsegment, COUNT(*) AS n_open
+      FROM main.sales_ops.orders   o
+      JOIN main.sales_ops.customer c ON o.o_custkey = c.c_custkey
+      WHERE o.o_orderstatus = 'O'
+        AND o.o_orderdate  >= current_date() - INTERVAL 30 DAYS
+      GROUP BY c.c_mktsegment
+      ORDER BY n_open DESC;
+
+joins:
+  - left: orders
+    right: customer
+    on: orders.o_custkey = customer.c_custkey
+  - left: lineitem
+    right: orders
+    on: lineitem.l_orderkey = orders.o_orderkey
+  - left: lineitem
+    right: supplier
+    on: lineitem.l_suppkey = supplier.s_suppkey
+  - left: customer
+    right: nation
+    on: customer.c_nationkey = nation.n_nationkey
+  - left: nation
+    right: region
+    on: nation.n_regionkey = region.r_regionkey

@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sales-ops-agent"
+version = "0.1.0"
+description = "Multi-agent system for Sales Operations Intelligence on Databricks"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Santosh Shinde" }]
+keywords = ["databricks", "mosaic-ai", "multi-agent", "genie", "langgraph"]
+
+dependencies = [
+    # Databricks SDK + auth
+    "databricks-sdk>=0.30.0",
+    # Agent framework
+    "databricks-langchain>=0.4.0",
+    "langgraph>=0.2.0",
+    "langchain-core>=0.3.0",
+    # MLflow for tracing, eval, and the ResponsesAgent base class
+    "mlflow>=2.20.0",
+    # Configuration
+    "pydantic>=2.6.0",
+    "pydantic-settings>=2.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-mock>=3.12",
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "types-pyyaml",
+]
+
+[project.scripts]
+sales-ops-agent = "sales_ops_agent.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "RET"]
+ignore = ["E501"]   # line length is enforced by formatter
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
