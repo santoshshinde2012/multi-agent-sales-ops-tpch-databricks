@@ -4,7 +4,7 @@ A **reference implementation** of a production-grade multi-agent system on Datab
 built-in `samples.tpch` dataset so anyone can run it end-to-end without preparing data.
 
 This repository is the companion code for the article
-**[Beyond Genie Code: Orchestrating Production Multi-Agent Systems on Databricks](../docs/article.md)**.
+**[Beyond Genie Code: Orchestrating Production Multi-Agent Systems on Databricks](https://medium.com/data-science-collective/beyond-genie-code-orchestrating-production-multi-agent-systems-on-databricks-86ac51e9c55b)**.
 Every file here maps to a numbered step in that article.
 
 > **Who is this for?** Anyone with a Databricks workspace who wants to understand — and run — a real
@@ -333,7 +333,7 @@ without a workspace. To verify your real workspace end-to-end, run the
 
 ## Going further
 
-- Read the [companion article](docs/article.md) for the full architectural rationale, the design
+- Read the [companion article](https://medium.com/data-science-collective/beyond-genie-code-orchestrating-production-multi-agent-systems-on-databricks-86ac51e9c55b) for the full architectural rationale, the design
   patterns, and the anti-patterns to avoid.
 - Adapt the specialists for your own domain. Start by editing
   [`specialists/genie_agent.py`](src/sales_ops_agent/specialists/genie_agent.py) — point it at your
