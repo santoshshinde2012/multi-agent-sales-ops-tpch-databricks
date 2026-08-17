@@ -222,7 +222,7 @@ This codebase deliberately follows the [SOLID principles](https://en.wikipedia.o
 | **I**nterface Segregation | Three small interfaces — `Specialist`, `Router`, `Synthesizer` — instead of one fat `Agent` interface. |
 | **D**ependency Inversion | The `Supervisor` depends on the `Specialist` Protocol (an abstraction), not on concrete agent classes. Agents are injected at construction time, which makes testing trivial. |
 
-The article also calls out three [anti-patterns](../docs/article.md#anti-patterns-to-avoid) — this
+The article also calls out three [anti-patterns](https://medium.com/data-science-collective/beyond-genie-code-orchestrating-production-multi-agent-systems-on-databricks-86ac51e9c55b) — this
 repo deliberately avoids all three:
 
 - ❌ **The God Agent** — we use a supervisor + specialists from the start.
