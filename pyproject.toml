@@ -45,6 +45,10 @@ where = ["src"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+# Databricks notebooks are cell-structured (# COMMAND ----------) and rely on
+# runtime-injected globals (spark, dbutils, display), so E402/F821/I001 fire on
+# every one of them. They are not importable modules; lint src and tests instead.
+extend-exclude = ["notebooks"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "SIM", "RET"]
