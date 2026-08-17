@@ -7,7 +7,7 @@ name = "sales-ops-agent"
 version = "0.1.0"
 description = "Multi-agent system for Sales Operations Intelligence on Databricks"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Santosh Shinde" }]
 keywords = ["databricks", "mosaic-ai", "multi-agent", "genie", "langgraph"]
@@ -44,7 +44,7 @@ where = ["src"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 # Databricks notebooks are cell-structured (# COMMAND ----------) and rely on
 # runtime-injected globals (spark, dbutils, display), so E402/F821/I001 fire on
 # every one of them. They are not importable modules; lint src and tests instead.
@@ -55,7 +55,7 @@ select = ["E", "F", "I", "N", "UP", "B", "SIM", "RET"]
 ignore = ["E501"]   # line length is enforced by formatter
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 strict = true
 warn_return_any = true
 warn_unused_ignores = true
