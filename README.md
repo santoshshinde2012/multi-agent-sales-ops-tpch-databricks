@@ -353,3 +353,7 @@ MIT — see [LICENSE](LICENSE).
 - [Build a Multi-Agent System on Databricks Apps](https://docs.databricks.com/aws/en/generative-ai/agent-framework/multi-agent-apps)
 - [Use Genie in Multi-Agent Systems](https://docs.databricks.com/aws/en/generative-ai/agent-framework/multi-agent-genie)
 - [State of AI Agents 2026](https://www.databricks.com/resources/ebook/state-of-ai-agents-report)
+
+## Support
+
+[![Buy Me a Coffee](https://img.shields.io/badge/buymeacoffee-black?style=for-the-badge&logo=buymeacoffee&logoColor=white)](https://buymeacoffee.com/santoshshin)
